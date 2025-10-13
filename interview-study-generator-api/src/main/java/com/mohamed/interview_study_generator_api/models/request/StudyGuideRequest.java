@@ -5,5 +5,7 @@ import lombok.Data;
 @Data
 public class StudyGuideRequest {
     private String domain;
-    private String specification;
+    private String specialization;
+    private Integer numberOfTopics;
+    private Integer numberOfWeeks;
 }

@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Interview Study Guide Starter</title>
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            crossorigin="anonymous"
+        />
+        <style>
+            :root {
+                --bg: #ffffff;
+                --fg: #000000;
+                --muted: #6c757d;
+                --border: #000000;
+            }
+            body {
+                background-color: var(--bg);
+                color: var(--fg);
+            }
+            .card {
+                border-color: var(--border);
+            }
+            .form-control,
+            .form-select {
+                color: var(--fg);
+                background-color: var(--bg);
+                border-color: var(--border);
+            }
+            .form-control:focus,
+            .form-select:focus {
+                box-shadow: none;
+                border-color: var(--fg);
+            }
+            .btn-primary {
+                background-color: var(--fg);
+                border-color: var(--fg);
+                color: var(--bg);
+            }
+            .btn-primary:disabled {
+                background-color: #222;
+                border-color: #222;
+                color: #fff;
+            }
+            .btn-outline-secondary {
+                color: var(--fg);
+                border-color: var(--fg);
+            }
+            .btn-outline-secondary:hover {
+                background-color: var(--fg);
+                color: var(--bg);
+            }
+            .btn-success {
+                background-color: #28a745;
+                border-color: #28a745;
+                color: white;
+            }
+            .btn-success:hover {
+                background-color: #218838;
+                border-color: #1e7e34;
+            }
+            .text-secondary,
+            .form-text {
+                color: var(--muted) !important;
+            }
+            .badge {
+                background-color: var(--fg);
+                color: var(--bg);
+                border: 1px solid var(--border);
+            }
+            .list-group-item {
+                background-color: var(--bg);
+                color: var(--fg);
+                border-color: var(--border);
+            }
+            .form-label.required::after {
+                content: " *";
+                color: var(--fg);
+            }
+            .overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(255, 255, 255, 0.85);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 1050;
+                color: #000;
+            }
+            .overlay.show {
+                display: flex;
+            }
+            .spinner {
+                width: 2rem;
+                height: 2rem;
+                border: 2px solid #000;
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+            .section-title {
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 0.5rem;
+                margin-bottom: 1rem;
+            }
+            .export-section {
+                background-color: #f8f9fa;
+                border: 1px solid var(--border);
+                border-radius: 0.375rem;
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+
+        <div
+            id="loadingOverlay"
+            class="overlay"
+            aria-live="assertive"
+            aria-busy="true"
+        >
+            <div class="d-flex flex-column align-items-center gap-3">
+                <div class="spinner" role="status" aria-label="Loading"></div>
+                <div>Generating study guide…</div>
+            </div>
+        </div>
+
+        <script
+            src="https://unpkg.com/react@18/umd/react.development.js"
+            crossorigin
+        ></script>
+        <script
+            src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+            crossorigin
+        ></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+        <script type="text/babel">
+            const { useState, useEffect } = React;
+
+            const DOMAIN_OPTIONS = [
+                "Registered Nurse",
+                "Software Engineering",
+                "Data Science",
+                "Product Management",
+                "Cybersecurity",
+                "Marketing",
+                "Sales",
+                "Graphic Design",
+                "Mechanical Engineering",
+                "Civil Engineering",
+                "Electrical Engineering",
+                "Medicine",
+                "Law",
+                "Teaching",
+                "Finance",
+                "Accounting",
+                "Human Resources",
+                "DevOps",
+                "Quality Assurance (QA)",
+                "UX/UI Design",
+                "Web Development",
+                "Mobile Development",
+                "AI / Machine Learning",
+                "Cloud Computing",
+                "IT Support",
+                "Pharmacy",
+                "Dentistry",
+                "Psychology",
+                "Economics",
+                "Biology",
+                "Chemistry",
+                "Physics",
+            ];
+
+            const TOPIC_OPTIONS = [10, 20, 30, 50];
+            const WEEK_OPTIONS = [1, 2, 3, 4, 5];
+
+            function LoadingOverlay({ show }) {
+                useEffect(() => {
+                    const el = document.getElementById("loadingOverlay");
+                    if (!el) return;
+                    if (show) el.classList.add("show");
+                    else el.classList.remove("show");
+                }, [show]);
+                return null;
+            }
+
+            function StudyGuideView({ data }) {
+                if (!data) return null;
+
+                const exportToPDF = () => {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    // Set up fonts and colors
+                    doc.setFont("helvetica");
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const margin = 20;
+                    const contentWidth = pageWidth - margin * 2;
+                    let yPosition = margin;
+
+                    // Helper function to add text with word wrapping
+                    const addText = (
+                        text,
+                        fontSize = 12,
+                        isBold = false,
+                        color = [0, 0, 0],
+                    ) => {
+                        doc.setFontSize(fontSize);
+                        doc.setTextColor(color[0], color[1], color[2]);
+                        if (isBold) {
+                            doc.setFont("helvetica", "bold");
+                        } else {
+                            doc.setFont("helvetica", "normal");
+                        }
+
+                        const lines = doc.splitTextToSize(text, contentWidth);
+                        doc.text(lines, margin, yPosition);
+                        yPosition += lines.length * (fontSize * 0.4) + 5;
+
+                        // Check if we need a new page
+                        if (
+                            yPosition >
+                            doc.internal.pageSize.getHeight() - margin
+                        ) {
+                            doc.addPage();
+                            yPosition = margin;
+                        }
+                    };
+
+                    // Helper function to add a section header
+                    const addSectionHeader = (title) => {
+                        yPosition += 10;
+                        addText(title, 16, true, [0, 0, 0]);
+                        yPosition += 5;
+                    };
+
+                    // Helper function to add a subsection
+                    const addSubsection = (title) => {
+                        yPosition += 5;
+                        addText(title, 14, true, [0, 0, 0]);
+                        yPosition += 3;
+                    };
+
+                    // Title
+                    addText(data.title, 20, true, [0, 0, 0]);
+                    yPosition += 15;
+
+                    // Add Prep Timelines first (as requested)
+                    if (
+                        Array.isArray(data.prepTimelines) &&
+                        data.prepTimelines.length > 0
+                    ) {
+                        addSectionHeader("PREPARATION TIMELINE");
+
+                        data.prepTimelines.forEach((pt, idx) => {
+                            addSubsection(`${idx + 1}. ${pt.week}`);
+
+                            if (pt.topic) {
+                                addText(
+                                    `Topic: ${pt.topic}`,
+                                    12,
+                                    false,
+                                    [50, 50, 50],
+                                );
+                            }
+
+                            if (pt.practiceTips) {
+                                addText(
+                                    `Practice Tips: ${pt.practiceTips}`,
+                                    12,
+                                    false,
+                                    [0, 0, 0],
+                                );
+                            }
+
+                            if (
+                                Array.isArray(
+                                    pt.topicsShouldBeFamiliarByThisWeek,
+                                ) &&
+                                pt.topicsShouldBeFamiliarByThisWeek.length > 0
+                            ) {
+                                addText(
+                                    "Should be familiar with:",
+                                    12,
+                                    true,
+                                    [0, 0, 0],
+                                );
+                                pt.topicsShouldBeFamiliarByThisWeek.forEach(
+                                    (topic) => {
+                                        addText(
+                                            `• ${topic}`,
+                                            11,
+                                            false,
+                                            [0, 0, 0],
+                                        );
+                                    },
+                                );
+                            }
+
+                            yPosition += 10;
+                        });
+                    }
+
+                    // Add Study Topics
+                    if (
+                        Array.isArray(data.studyTopics) &&
+                        data.studyTopics.length > 0
+                    ) {
+                        addSectionHeader("STUDY TOPICS");
+
+                        data.studyTopics.forEach((topic, idx) => {
+                            addSubsection(`${idx + 1}. ${topic.title}`);
+
+                            if (topic.explanation) {
+                                addText(
+                                    `Explanation: ${topic.explanation}`,
+                                    12,
+                                    false,
+                                    [0, 0, 0],
+                                );
+                            }
+
+                            if (topic.prosConsChallenges) {
+                                addText(
+                                    `Pros/Cons/Challenges: ${topic.prosConsChallenges}`,
+                                    12,
+                                    false,
+                                    [0, 0, 0],
+                                );
+                            }
+
+                            if (topic.approach) {
+                                addText(
+                                    `Approach: ${topic.approach}`,
+                                    12,
+                                    false,
+                                    [0, 0, 0],
+                                );
+                            }
+
+                            if (
+                                Array.isArray(topic.resources) &&
+                                topic.resources.length > 0
+                            ) {
+                                addText("Resources:", 12, true, [0, 0, 0]);
+                                topic.resources.forEach((resource) => {
+                                    const resourceText = resource.link
+                                        ? `${resource.name} - ${resource.link}`
+                                        : resource.name;
+                                    addText(
+                                        `• ${resourceText}`,
+                                        11,
+                                        false,
+                                        [0, 0, 0],
+                                    );
+                                });
+                            }
+
+                            yPosition += 10;
+                        });
+                    }
+
+                    // Save the PDF
+                    doc.save(
+                        `${data.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_study_guide.pdf`,
+                    );
+                };
+
+                return (
+                    <div className="mt-4">
+                        <div className="export-section">
+                            <div className="d-flex justify-content-between align-items-center">
+                                <h5 className="mb-0">Export Study Guide</h5>
+                                <button
+                                    className="btn btn-success"
+                                    onClick={exportToPDF}
+                                    title="Export to PDF"
+                                >
+                                    📄 Export as PDF
+                                </button>
+                            </div>
+                            <p className="text-secondary mb-0 mt-2">
+                                Download your study guide as a beautifully
+                                formatted PDF with timeline at the top.
+                            </p>
+                        </div>
+
+                        <div className="card">
+                            <div className="card-body">
+                                <h3 className="mb-3 section-title">
+                                    {data.title}
+                                </h3>
+
+                                {Array.isArray(data.studyTopics) &&
+                                    data.studyTopics.length > 0 && (
+                                        <div className="mb-4">
+                                            <h5 className="mb-3">
+                                                Study Topics
+                                            </h5>
+                                            <div className="list-group">
+                                                {data.studyTopics.map(
+                                                    (topic, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="list-group-item"
+                                                        >
+                                                            <div className="d-flex align-items-start">
+                                                                <span className="badge me-3">
+                                                                    {idx + 1}
+                                                                </span>
+                                                                <div className="w-100">
+                                                                    <strong>
+                                                                        {
+                                                                            topic.title
+                                                                        }
+                                                                    </strong>
+                                                                    {topic.explanation && (
+                                                                        <p className="mb-2 mt-2">
+                                                                            {
+                                                                                topic.explanation
+                                                                            }
+                                                                        </p>
+                                                                    )}
+                                                                    {topic.prosConsChallenges && (
+                                                                        <div className="mb-2">
+                                                                            <div className="fw-semibold">
+                                                                                Pros/Cons/Challenges
+                                                                            </div>
+                                                                            <div className="text-secondary">
+                                                                                {
+                                                                                    topic.prosConsChallenges
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {topic.approach && (
+                                                                        <div className="mb-2">
+                                                                            <div className="fw-semibold">
+                                                                                Approach
+                                                                            </div>
+                                                                            <div className="text-secondary">
+                                                                                {
+                                                                                    topic.approach
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {Array.isArray(
+                                                                        topic.resources,
+                                                                    ) &&
+                                                                        topic
+                                                                            .resources
+                                                                            .length >
+                                                                            0 && (
+                                                                            <div className="mt-2">
+                                                                                <div className="fw-semibold mb-1">
+                                                                                    Resources
+                                                                                </div>
+                                                                                <ul className="mb-0">
+                                                                                    {topic.resources.map(
+                                                                                        (
+                                                                                            r,
+                                                                                            rIdx,
+                                                                                        ) => (
+                                                                                            <li
+                                                                                                key={
+                                                                                                    rIdx
+                                                                                                }
+                                                                                            >
+                                                                                                {
+                                                                                                    r.name
+                                                                                                }
+                                                                                                {r.link ? (
+                                                                                                    <>
+                                                                                                        {
+                                                                                                            " - "
+                                                                                                        }
+                                                                                                        <a
+                                                                                                            href={
+                                                                                                                r.link
+                                                                                                            }
+                                                                                                            target="_blank"
+                                                                                                            rel="noreferrer"
+                                                                                                        >
+                                                                                                            {
+                                                                                                                r.link
+                                                                                                            }
+                                                                                                        </a>
+                                                                                                    </>
+                                                                                                ) : null}
+                                                                                            </li>
+                                                                                        ),
+                                                                                    )}
+                                                                                </ul>
+                                                                            </div>
+                                                                        )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                {Array.isArray(data.prepTimelines) &&
+                                    data.prepTimelines.length > 0 && (
+                                        <div>
+                                            <h5 className="mb-3">
+                                                Prep Timelines
+                                            </h5>
+                                            <div className="list-group">
+                                                {data.prepTimelines.map(
+                                                    (pt, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="list-group-item"
+                                                        >
+                                                            <div className="d-flex align-items-start">
+                                                                <span className="badge me-3">
+                                                                    {idx + 1}
+                                                                </span>
+                                                                <div>
+                                                                    <strong>
+                                                                        {
+                                                                            pt.week
+                                                                        }
+                                                                    </strong>
+                                                                    {pt.topic ? (
+                                                                        <div className="text-secondary">
+                                                                            {
+                                                                                pt.topic
+                                                                            }
+                                                                        </div>
+                                                                    ) : null}
+                                                                    {pt.practiceTips ? (
+                                                                        <p className="mb-2 mt-2">
+                                                                            {
+                                                                                pt.practiceTips
+                                                                            }
+                                                                        </p>
+                                                                    ) : null}
+                                                                    {Array.isArray(
+                                                                        pt.topicsShouldBeFamiliarByThisWeek,
+                                                                    ) &&
+                                                                        pt
+                                                                            .topicsShouldBeFamiliarByThisWeek
+                                                                            .length >
+                                                                            0 && (
+                                                                            <div>
+                                                                                <div className="fw-semibold">
+                                                                                    Should
+                                                                                    be
+                                                                                    familiar
+                                                                                    with:
+                                                                                </div>
+                                                                                <ul className="mb-0">
+                                                                                    {pt.topicsShouldBeFamiliarByThisWeek.map(
+                                                                                        (
+                                                                                            t,
+                                                                                            i,
+                                                                                        ) => (
+                                                                                            <li
+                                                                                                key={
+                                                                                                    i
+                                                                                                }
+                                                                                            >
+                                                                                                {
+                                                                                                    t
+                                                                                                }
+                                                                                            </li>
+                                                                                        ),
+                                                                                    )}
+                                                                                </ul>
+                                                                            </div>
+                                                                        )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            function App() {
+                const [domain, setDomain] = useState("");
+                const [specialization, setSpecialization] = useState("");
+                const [numberOfTopics, setNumberOfTopics] = useState("");
+                const [numberOfWeeks, setNumberOfWeeks] = useState("");
+                const [loading, setLoading] = useState(false);
+                const [error, setError] = useState("");
+                const [result, setResult] = useState(null);
+
+                const canSubmit =
+                    domain.trim().length > 0 && numberOfTopics && numberOfWeeks;
+
+                async function handleSubmit(e) {
+                    e.preventDefault();
+                    if (!canSubmit) return;
+                    setError("");
+                    setResult(null);
+                    setLoading(true);
+                    try {
+                        const response = await fetch(
+                            "http://localhost:8080/api/interview-guide/generate",
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    domain: domain,
+                                    specification: specialization || "",
+                                    numberOfTopics: parseInt(numberOfTopics),
+                                    numberOfWeeks: parseInt(numberOfWeeks),
+                                }),
+                            },
+                        );
+
+                        let payload = null;
+                        const raw = await response.text();
+                        try {
+                            payload = raw ? JSON.parse(raw) : null;
+                        } catch {}
+                        if (!response.ok) {
+                            const serverMsg =
+                                (payload &&
+                                    (payload.error || payload.message)) ||
+                                raw ||
+                                `Request failed with status ${response.status}`;
+                            throw new Error(serverMsg);
+                        }
+
+                        setResult(payload);
+                    } catch (err) {
+                        setError(
+                            err?.message || "Network error. Please try again.",
+                        );
+                    } finally {
+                        setLoading(false);
+                    }
+                }
+
+                function handleReset() {
+                    setDomain("");
+                    setSpecialization("");
+                    setNumberOfTopics("");
+                    setNumberOfWeeks("");
+                    setResult(null);
+                    setError("");
+                }
+
+                return (
+                    <div className="container py-5">
+                        <LoadingOverlay show={loading} />
+                        <div className="row justify-content-center">
+                            <div className="col-12 col-lg-10 col-xl-8">
+                                <div className="text-center mb-4">
+                                    <h1 className="fw-bold">
+                                        Interview Study Guide Starter
+                                    </h1>
+                                    <p className="text-secondary mb-0">
+                                        You are stuck? Do not worry, well help
+                                        you get started!
+                                    </p>
+                                </div>
+
+                                <div className="card">
+                                    <div className="card-body">
+                                        <form onSubmit={handleSubmit}>
+                                            <div className="row g-3">
+                                                <div className="col-12 col-md-6">
+                                                    <label
+                                                        htmlFor="domain"
+                                                        className="form-label required"
+                                                    >
+                                                        Domain
+                                                    </label>
+                                                    <select
+                                                        id="domain"
+                                                        className="form-select"
+                                                        value={domain}
+                                                        onChange={(e) =>
+                                                            setDomain(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        required
+                                                    >
+                                                        <option
+                                                            value=""
+                                                            disabled
+                                                        >
+                                                            Select a domain
+                                                        </option>
+                                                        {DOMAIN_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    value={opt}
+                                                                    key={opt}
+                                                                >
+                                                                    {opt}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <div className="form-text">
+                                                        e.g., Registered Nurse
+                                                    </div>
+                                                </div>
+
+                                                <div className="col-12 col-md-6">
+                                                    <label
+                                                        htmlFor="specialization"
+                                                        className="form-label"
+                                                    >
+                                                        Specialization
+                                                    </label>
+                                                    <input
+                                                        id="specialization"
+                                                        type="text"
+                                                        className="form-control"
+                                                        placeholder="e.g., ER, Patient Care, and ICU"
+                                                        value={specialization}
+                                                        onChange={(e) =>
+                                                            setSpecialization(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                    <div className="form-text">
+                                                        Optional: narrows the
+                                                        guide
+                                                    </div>
+                                                </div>
+
+                                                <div className="col-12 col-md-6">
+                                                    <label
+                                                        htmlFor="numberOfTopics"
+                                                        className="form-label required"
+                                                    >
+                                                        Number of Topics
+                                                    </label>
+                                                    <select
+                                                        id="numberOfTopics"
+                                                        className="form-select"
+                                                        value={numberOfTopics}
+                                                        onChange={(e) =>
+                                                            setNumberOfTopics(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        required
+                                                    >
+                                                        <option
+                                                            value=""
+                                                            disabled
+                                                        >
+                                                            Select number of
+                                                            topics
+                                                        </option>
+                                                        {TOPIC_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    value={opt}
+                                                                    key={opt}
+                                                                >
+                                                                    {opt} topics
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <div className="form-text">
+                                                        How many topics to
+                                                        include
+                                                    </div>
+                                                </div>
+
+                                                <div className="col-12 col-md-6">
+                                                    <label
+                                                        htmlFor="numberOfWeeks"
+                                                        className="form-label required"
+                                                    >
+                                                        Number of Weeks
+                                                    </label>
+                                                    <select
+                                                        id="numberOfWeeks"
+                                                        className="form-select"
+                                                        value={numberOfWeeks}
+                                                        onChange={(e) =>
+                                                            setNumberOfWeeks(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        required
+                                                    >
+                                                        <option
+                                                            value=""
+                                                            disabled
+                                                        >
+                                                            Select number of
+                                                            weeks
+                                                        </option>
+                                                        {WEEK_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    value={opt}
+                                                                    key={opt}
+                                                                >
+                                                                    {opt} week
+                                                                    {opt > 1
+                                                                        ? "s"
+                                                                        : ""}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <div className="form-text">
+                                                        How many weeks before
+                                                        interview
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="d-flex gap-2 mt-4">
+                                                <button
+                                                    type="submit"
+                                                    className="btn btn-primary"
+                                                    disabled={!canSubmit}
+                                                >
+                                                    Generate Study Guide
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-secondary"
+                                                    onClick={handleReset}
+                                                >
+                                                    Reset
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {error && (
+                                    <div
+                                        className="alert alert-danger mt-4"
+                                        role="alert"
+                                        style={{
+                                            borderColor: "#000",
+                                            background: "#fff",
+                                            color: "#000",
+                                        }}
+                                    >
+                                        {error}
+                                    </div>
+                                )}
+
+                                <StudyGuideView data={result} />
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const root = ReactDOM.createRoot(document.getElementById("root"));
+            root.render(<App />);
+        </script>
+    </body>
+</html>

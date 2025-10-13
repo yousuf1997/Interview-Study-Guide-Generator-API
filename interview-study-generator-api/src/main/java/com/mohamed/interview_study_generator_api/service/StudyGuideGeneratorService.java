@@ -6,7 +6,6 @@ import com.mohamed.interview_study_generator_api.models.response.StudyGuideRespo
 import com.mohamed.interview_study_generator_api.prompts.StudyGuidePrompts;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.ResponseEntity;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.stereotype.Service;
 
@@ -22,12 +21,15 @@ public class StudyGuideGeneratorService {
 
     public StudyGuideResponse generateStudyGuide(StudyGuideRequest studyGuideRequest) {
         StringBuilder mainContent = new StringBuilder().append(studyGuideRequest.getDomain());
-        if (StringUtils.isNotBlank(studyGuideRequest.getSpecification())) {
-            mainContent.append(" and ").append("following specifications ").append(studyGuideRequest.getSpecification());
+        if (StringUtils.isNotBlank(studyGuideRequest.getSpecialization())) {
+            mainContent.append(" and ").append("following specifications ").append(studyGuideRequest.getSpecialization());
         }
         ChatResponse chatResponse = null;
         try {
-            String actualPrompt = StudyGuidePrompts.BASE_GUIDE.getPrompt().replace("PLACE_HOLDER", mainContent.toString());
+            String actualPrompt = StudyGuidePrompts.BASE_GUIDE.getPrompt()
+                    .replace("PLACE_HOLDER", mainContent.toString())
+                    .replace("TOTAL_TOPICS", studyGuideRequest.getNumberOfTopics().toString())
+                    .replace("TOTAL_WEEKS", studyGuideRequest.getNumberOfWeeks().toString());
             chatResponse = client.prompt().user(actualPrompt).call().chatResponse();
             String responseContent = chatResponse.getResult().getOutput().getText().replace("```json", "").replace("```", "");
             return objectMapper.readValue(responseContent, StudyGuideResponse.class);
