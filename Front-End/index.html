@@ -183,7 +183,7 @@
                 "Physics",
             ];
 
-            const TOPIC_OPTIONS = [10, 20, 30, 50];
+            const TOPIC_OPTIONS = [10, 20, 40, 30, 50];
             const WEEK_OPTIONS = [1, 2, 3, 4, 5];
 
             function LoadingOverlay({ show }) {
@@ -626,7 +626,7 @@
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
                                     domain: domain,
-                                    specification: specialization || "",
+                                    specialization: specialization || "",
                                     numberOfTopics: parseInt(numberOfTopics),
                                     numberOfWeeks: parseInt(numberOfWeeks),
                                 }),
